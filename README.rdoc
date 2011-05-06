@@ -1,0 +1,17 @@
+= Falcon
+
+Video encoding tool.
+
+== Install
+
+  gem 'falcon'
+
+  rails generate falcon:install
+  
+
+== Create profiles
+
+  Falcon::Profile.new("web_ogg", {:player => 'html5', :container => "ogg", :extname => 'ogv',
+    :width => 480, :height => 320, :video_codec => "libtheora",
+    :video_bitrate => 500, :fps => 29.97, :audio_codec => "libvorbis",
+    :audio_bitrate => 128, :audio_sample_rate => 48000})

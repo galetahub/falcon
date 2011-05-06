@@ -1,0 +1,7 @@
+Usage:
+  rails generate falcon:install
+
+Options:
+                 
+Example:
+  rails g falcon:install
