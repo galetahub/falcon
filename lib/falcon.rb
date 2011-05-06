@@ -1,6 +1,6 @@
 module Falcon
   autoload :Profile, 'falcon/profile'
-  autoload :ActiveRecord, 'falcon/active_record'
+  autoload :Base,    'falcon/base'
   autoload :Encoder, 'falcon/encoder'
   
   CONTENT_TYPES = [
@@ -56,3 +56,6 @@ module Falcon
     Falcon::Redis.instance
   end
 end
+
+require 'falcon/profiles'
+require 'falcon/engine'

@@ -3,7 +3,7 @@ module Falcon
     cattr_accessor :all
     @@all = []
     
-    attr_accessor :name, :player, :container, :extname, :with, :height, :fps, :command
+    attr_accessor :name, :player, :container, :extname, :width, :height, :fps, :command
     attr_accessor :video_bitrate, :video_codec
     attr_accessor :audio_codec, :audio_bitrate, :audio_sample_rate
     
@@ -32,7 +32,7 @@ module Falcon
         send("#{key}=", value)
       end
       
-      @@profiles << self
+      @@all << self
     end
     
     def audio_bitrate_in_bits

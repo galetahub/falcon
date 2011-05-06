@@ -1,7 +1,7 @@
 require 'rails/generators'
 require 'rails/generators/migration'
 
-module Sunrise
+module Falcon
   module Generators
     class InstallGenerator < Rails::Generators::Base
       include Rails::Generators::Migration

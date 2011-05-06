@@ -1,10 +1,10 @@
 module Falcon
-  module ActiveRecord
+  module Base
     def self.included(base)
-      base.extend ClassMethods
+      base.extend SingletonMethods
     end
     
-    module ClassMethods
+    module SingletonMethods
       def falcon_encode(options = {})
         options = {:name => 'falcon'}.merge(options)
         options.assert_valid_keys(:source, :name, :profiles)
@@ -14,23 +14,39 @@ module Falcon
         
         unless self.is_a?(ClassMethods)
           include InstanceMethods
+          extend ClassMethods
           
           has_many :falcon_encodings, :class_name => 'Falcon::Encoding', :dependent => :destroy
           
           after_create :create_falcon_encodings
         end
-        
+      end
+    end
+    
+    module ClassMethods
+      def falcon_source
+        falcon_encode_options[:source]
+      end
+      
+      def falcon_profiles
+        falcon_encode_options[:profiles]
       end
     end
     
     module InstanceMethods
+    
+      def falcon_source_path
+        @falcon_source_path ||= begin
+          method = self.class.falcon_source
+          method.respond_to?(:call) ? method.call(self) : self.send(method)
+        end
+      end
+      
       protected
       
         def create_falcon_encodings
-          source_path = send(self.class.falcon_encode_options[:source])
-          
-          self.class.falcon_encode_options[:profiles].each do |profile_name|
-            falcon_encodings.create(:profile_name => profile_name, :source_path => source_path)
+          self.class.falcon_profiles.each do |profile_name|
+            self.falcon_encodings.create(:profile_name => profile_name, :source_path => falcon_source_path)
           end
         end
     end
