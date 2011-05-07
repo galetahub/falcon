@@ -1,33 +1,52 @@
 require 'fileutils'
+require 'web_video'
 
 module Falcon
   module Encoder
+    PROCESSING = 1
+    SUCCESS = 2
+    FAILURE = 3
+      
     def self.included(base)
       base.send :include, InstanceMethods
       base.send :extend,  ClassMethods
     end
     
     module ClassMethods
-      PROCESSING = 1
-      SUCCESS = 2
-      FAILURE = 3
-      
       def self.extended(base)
         base.class_eval do
           belongs_to :videoable, :polymorphic => true
+          
           attr_accessor :ffmpeg_resolution, :ffmpeg_padding
-          
-          before_validation :set_resolution
-          after_create :make_dir
-          
-          validates_presence_of :profile_name, :source_path
           
           attr_accessible :profile_name, :source_path
           
-          define_callbacks :encode
+          validates_presence_of :profile_name, :source_path
+
+          define_callbacks :encode, :terminator => "result == false", :scope => [:kind, :name]
+          
+          before_validation :set_resolution
+          after_create :make_dir, :start_encoding
+          before_encode :before_encoding
+          after_encode :after_encoding
           
           scope :with_profile, lambda {|name| where(:profile_name => name).first }
         end
+      end
+      
+      def before_encode(*args, &block)
+        options = args.extract_options!
+        if options.is_a?(Hash) && options[:on]
+          options[:if] = Array.wrap(options[:if])
+        end
+        set_callback(:encode, :before, *(args << options), &block)
+      end
+
+      def after_encode(*args, &block)
+        options = args.extract_options!
+        options[:prepend] = true
+        options[:if] = Array.wrap(options[:if])
+        set_callback(:encode, :after, *(args << options), &block)
       end
     end
     
@@ -72,33 +91,33 @@ module Falcon
       #   :comment => '', :description => '', :language => ''}
       #
       def metadata_options
-        {}
-      end
-      
-      def encode
-        self.status = PROCESSING
-        self.save(:validate => false)
-
-        begun_encoding = Time.now
-
-        begin
-          self.encode_source
-          self.generate_screenshots
-          
-          self.status = SUCCESS
-          self.encoded_at = Time.now
-          self.encoding_time = (Time.now - begun_encoding).to_i
-          self.save(:validate => false)
-        rescue
-          self.status = FAILURE
-          self.save(:validate => false)
-          raise
+        if videoable_method?(:falcon_metadata_options)
+          videoable.falcon_metadata_options
+        else
+          {}
         end
       end
       
-      def async_encode
-        unless Rails.env.test?
-          Resque.enqueue(JobEncoding, self.id)
+      def encode
+        run_callbacks :encode do
+          self.status = PROCESSING
+          self.save(:validate => false)
+
+          begun_encoding = Time.now
+
+          begin
+            self.encode_source
+            self.generate_screenshots
+            
+            self.status = SUCCESS
+            self.encoded_at = Time.now
+            self.encoding_time = (Time.now - begun_encoding).to_i
+            self.save(:validate => false)
+          rescue
+            self.status = FAILURE
+            self.save(:validate => false)
+            raise
+          end
         end
       end
       
@@ -115,6 +134,14 @@ module Falcon
       end
       
       protected
+        
+        def start_encoding
+          if videoable_method?(:falcon_encode)
+            videoable.falcon_encode(self)
+          else
+            encode
+          end
+        end
         
         def set_resolution
           unless profile.nil?
@@ -193,8 +220,8 @@ module Falcon
               command << @ffmpeg_padding
               command << "-y"
             end
-          rescue WebVideo::CommandLineError => e
-            WebVideo.logger.error("Unable to transcode video #{self.id}: #{e.class} - #{e.message}")
+          rescue ::WebVideo::CommandLineError => e
+            ::WebVideo.logger.error("Unable to transcode video #{self.id}: #{e.class} - #{e.message}")
             return false
           end
         end
@@ -202,7 +229,7 @@ module Falcon
         def generate_screenshots
           image_files = output_path.gsub(File.extname(output_path), '_%2d.jpg')
           options = {:resolution => self.resolution, :count => 1, :at => :center}
-          image_transcoder = WebVideo::Transcoder.new(output_path) 
+          image_transcoder = ::WebVideo::Transcoder.new(output_path) 
           
           begin
             image_transcoder.screenshot(image_files, options) do |command|
@@ -212,14 +239,32 @@ module Falcon
               #command << "-t 4"
               command << "-y"
             end
-          rescue WebVideo::CommandLineError => e
-            WebVideo.logger.error("Unable to generate screenshots for video #{self.id}: #{e.class} - #{e.message}")
+          rescue ::WebVideo::CommandLineError => e
+            ::WebVideo.logger.error("Unable to generate screenshots for video #{self.id}: #{e.class} - #{e.message}")
             return false
+          end
+        end
+        
+        def before_encoding
+          if videoable_method?(:falcon_before_encode)
+            return videoable.falcon_before_encode(self)
+          else
+            return true
+          end
+        end
+        
+        def after_encoding
+          if videoable_method?(:falcon_after_encode)
+            videoable.falcon_after_encode(self)
           end
         end
         
         def make_dir
           FileUtils.mkdir_p( File.dirname(output_path) )
+        end
+        
+        def videoable_method?(method_name)
+          videoable && videoable.respond_to?(method_name.to_sym)
         end
     end
   end

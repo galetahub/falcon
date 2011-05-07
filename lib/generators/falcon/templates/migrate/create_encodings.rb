@@ -18,7 +18,7 @@ class FalconCreateEncodings < ActiveRecord::Migration
       t.timestamps
     end
 
-    add_index :falcon_encodings, [:viewable_type, :videoable_id]
+    add_index :falcon_encodings, [:videoable_type, :videoable_id]
     add_index :falcon_encodings, :status
   end
 

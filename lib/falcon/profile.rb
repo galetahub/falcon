@@ -62,7 +62,7 @@ module Falcon
     
     class << self
       def find(name)
-        @all.detect { |p| p.name == name.to_s } 
+        @@all.detect { |p| p.name == name.to_s } 
       end
       alias :get :find
       

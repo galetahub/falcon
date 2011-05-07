@@ -16,7 +16,10 @@ module Falcon
           include InstanceMethods
           extend ClassMethods
           
-          has_many :falcon_encodings, :class_name => 'Falcon::Encoding', :dependent => :destroy
+          has_many :falcon_encodings, 
+            :class_name => 'Falcon::Encoding', 
+            :as => :videoable,
+            :dependent => :destroy
           
           after_create :create_falcon_encodings
         end

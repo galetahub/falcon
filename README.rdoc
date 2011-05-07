@@ -8,8 +8,11 @@ Video encoding tool.
 
   rails generate falcon:install
   
+  rake db:migrate
+  
+== Usage
 
-== Create profiles
+=== Create profiles
 
 By default avariable two profiles "web_mp4" and "web_ogg":
   
@@ -23,4 +26,92 @@ By default avariable two profiles "web_mp4" and "web_ogg":
     :width => 480, :height => 320, :video_codec => "libtheora",
     :video_bitrate => 500, :fps => 29.97, :audio_codec => "libvorbis",
     :audio_bitrate => 128, :audio_sample_rate => 48000})
+
+=== Model
+
+Model has attachment file, we declare "falcon_encode" method and pass :source and :profiles options:
+
+  class VideoFile
+    has_attached_file :data,
+                      :url => "/assets/video_files/:id/:filename",
+                      :path => ":rails_root/public/assets/video_files/:id/:filename"
     
+    validates_attachment_presence :data
+    validates_attachment_size :data, :less_than => 200.megabytes
+    validates_attachment_content_type :data, :content_type => Falcon::CONTENT_TYPES
+    
+    attr_accessible :data
+    
+    falcon_encode :source => lambda { |file| file.data.path }, 
+                  :profiles => ['web_mp4', 'web_ogg']
+  end
+
+=== Metadata options
+
+You can provide metadata options in your model, just define method "falcon_metadata_options":
+
+  class VideoFile
+    
+    ...
+    
+    # A hash of metadatas for video:
+    # 
+    # { :title => '', :author => '', :copyright => '', 
+    #   :comment => '', :description => '', :language => ''}
+    #
+    def falcon_metadata_options
+      { :title => title, :author => user.name, :language => 'rus' }
+    end
+  end
+  
+=== Background processing
+
+Video encoding take a long time, so you must use background process. I recomended "delayed_job" or "resque".
+I use "resque". To send encoding in background, just declare method "falcon_encode":
+
+  class VideoFile
+    
+    ...
+    
+    def falcon_encode(record)
+      unless Rails.env.test?
+        Resque.enqueue(JobEncoding, record.id)
+      end
+    end
+  end
+
+  class JobEncoding
+    @queue = :encoding_queue
+    
+    def self.perform(encoding_id)
+      encoding = Falcon::Encoding.find(encoding_id)
+      encoding.encode
+    end
+  end
+
+=== Callbacks
+
+  class VideoFile
+    
+    ...
+    
+    def falcon_before_encode(record)
+    end
+    
+    def falcon_after_encode(record)
+    end
+  end
+
+=== Screenshots
+
+  class VideoFile
+    has_many :screenshots, :dependent => :destroy
+    
+    ...
+    
+    def falcon_after_encode(record)
+      record.screenshots.each do |filepath|
+        self.screenshots.create(:data => File.new(filepath))
+      end
+    end
+  end
