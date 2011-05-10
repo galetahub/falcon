@@ -67,7 +67,9 @@ You can provide metadata options in your model, just define method "falcon_metad
 === Background processing
 
 Video encoding take a long time, so you must use background process. I recomended "delayed_job" or "resque".
-I use "resque". To send encoding in background, just declare method "falcon_encode":
+To send encoding in background, just declare method "falcon_encode":
+
+Resque example:
 
   class VideoFile
     
@@ -86,6 +88,17 @@ I use "resque". To send encoding in background, just declare method "falcon_enco
     def self.perform(encoding_id)
       encoding = Falcon::Encoding.find(encoding_id)
       encoding.encode
+    end
+  end
+  
+For delayed_job:
+
+  class VideoFile
+    
+    ...
+    
+    def falcon_encode(record)
+      record.delay.encode
     end
   end
 
