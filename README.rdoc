@@ -52,18 +52,22 @@ Model has attachment file, we declare "falcon_encode" method and pass :source an
 
 === Metadata options
 
-You can provide metadata options in your model, just define method "falcon_metadata_options":
+You can provide metadata options in your model, just set option "metadata":
 
   class VideoFile
     
     ...
+    
+    falcon_encode 'media', :source => lambda { |file| file.data.path }, 
+                  :metadata => :media_metadata_options,
+                  :profiles => ['web_mp4', 'web_ogg']
     
     # A hash of metadatas for video:
     # 
     # { :title => '', :author => '', :copyright => '', 
     #   :comment => '', :description => '', :language => ''}
     #
-    def falcon_metadata_options
+    def media_metadata_options
       { :title => title, :author => user.name, :language => 'rus' }
     end
   end
@@ -71,7 +75,7 @@ You can provide metadata options in your model, just define method "falcon_metad
 === Background processing
 
 Video encoding take a long time, so you must use background process. I recomended "delayed_job" or "resque".
-To send encoding in background, just declare method "falcon_encode":
+To send encoding in background, just set option method "encode":
 
 Resque example:
 
@@ -79,11 +83,10 @@ Resque example:
     
     ...
     
-    def falcon_encode(record)
-      unless Rails.env.test?
-        Resque.enqueue(JobEncoding, record.id)
-      end
-    end
+    falcon_encode 'media', :source => lambda { |file| file.data.path }, 
+                  :metadata => :media_metadata_options,
+                  :encode => lambda { |encoding| Resque.enqueue(JobEncoding, encoding.id) },
+                  :profiles => ['web_mp4', 'web_ogg']
   end
 
   class JobEncoding
@@ -101,9 +104,11 @@ For delayed_job:
     
     ...
     
-    def falcon_encode(record)
-      record.delay.encode
-    end
+    falcon_encode 'media', :source => lambda { |file| file.data.path },
+                :metadata => :media_metadata_options,
+                :encode => lambda { |encoding| encoding.delay.encode },
+                :profiles => ['web_mp4', 'web_ogg']
+                
   end
 
 === Callbacks
@@ -112,11 +117,12 @@ For delayed_job:
     
     ...
     
-    def falcon_before_encode(record)
-    end
+    falcon_encode 'media', :source => lambda { |file| file.data.path }
     
-    def falcon_after_encode(record)
-    end
+    before_encode       :method_name
+    before_media_encode :method_name
+    after_media_encode  :method_name
+    after_encode        :method_name
   end
 
 === Screenshots
@@ -126,9 +132,24 @@ For delayed_job:
     
     ...
     
-    def falcon_after_encode(record)
-      record.screenshots do |filepath|
+    falcon_encode 'media', :source => lambda { |file| file.data.path }
+    
+    after_media_encode :save_screenshots
+    
+    def save_screenshots
+      media.screenshots do |filepath|
         self.screenshots.create(:data => File.new(filepath))
       end
     end
   end
+  
+=== Path
+  
+  class VideoFile
+    falcon_encode 'media', :source => lambda { |file| file.data.path }
+    
+    def media_url(profile_name)
+      media.url(profile_name)
+    end
+  end
+  

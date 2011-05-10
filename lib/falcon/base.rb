@@ -5,67 +5,93 @@ module Falcon
     end
     
     module SingletonMethods
-      def falcon_encode(options = {})
-        options = {:name => 'falcon'}.merge(options)
-        options.assert_valid_keys(:source, :name, :profiles)
-        
-        class_attribute :falcon_encode_options, :instance_writer => false
-        self.falcon_encode_options = options
-        
-        unless self.is_a?(ClassMethods)
-          include InstanceMethods
-          extend ClassMethods
+      #
+      # falcon_encode 'media', :source => lambda { |file| file.data.path }, 
+      #               :profiles => ['web_mp4', 'web_ogg']
+      #
+      # falcon_encode 'media', :source => :method_return_path_to_file, 
+      #               :profiles => ['web_mp4', 'web_ogg']
+      #               :metadata => :method_return_options_hash,
+      #               :encode => lambda { |encoding| encoding.delay.encode }
+      #
+      def falcon_encode(name, options = {})
+        extend ClassMethods
+        include InstanceMethods
           
-          has_many :falcon_encodings, 
-            :class_name => 'Falcon::Encoding', 
-            :as => :videoable,
-            :dependent => :destroy
-          
-          after_create :create_falcon_encodings
+        options.assert_valid_keys(:source, :profiles, :metadata, :encode)
+        
+        unless respond_to?(:falcon_encoding_definitions)
+          class_attribute :falcon_encoding_definitions, :instance_writer => false
+          self.falcon_encoding_definitions = {}
+        end
+        
+        self.falcon_encoding_definitions[name] = options
+        
+        has_many :falcon_encodings, 
+          :class_name => 'Falcon::Encoding', 
+          :as => :videoable,
+          :dependent => :delete_all
+
+        after_save :save_falcon_medias
+        before_destroy :destroy_falcon_medias
+        
+        define_falcon_callbacks :encode, :"#{name}_encode"
+        
+        define_method name do |*args|
+          a = falcon_media_for(name)
+          (args.length > 0) ? a.to_s(args.first) : a
+        end
+
+        define_method "#{name}=" do |source_path|
+          falcon_media_for(name).assign(source_path)
+        end
+
+        define_method "#{name}?" do
+          falcon_media_for(name).exist?
         end
       end
     end
     
     module ClassMethods
-      def falcon_source
-        falcon_encode_options[:source]
-      end
-      
-      def falcon_profiles
-        falcon_encode_options[:profiles]
-      end
-      
-      def falcon_name
-        falcon_encode_options[:name]
+      def define_falcon_callbacks(*callbacks)
+        define_callbacks *[callbacks, {:terminator => "result == false"}].flatten
+        callbacks.each do |callback|
+          eval <<-end_callbacks
+            def before_#{callback}(*args, &blk)
+              set_callback(:#{callback}, :before, *args, &blk)
+            end
+            def after_#{callback}(*args, &blk)
+              set_callback(:#{callback}, :after, *args, &blk)
+            end
+          end_callbacks
+        end
       end
     end
     
     module InstanceMethods
-    
-      def falcon_source_path
-        @falcon_source_path ||= begin
-          method = self.class.falcon_source
-          method.respond_to?(:call) ? method.call(self) : self.send(method)
+      
+      def falcon_media_for(name)
+        @_falcon_medias ||= {}
+        @_falcon_medias[name] ||= Media.new(name, self, self.class.falcon_encoding_definitions[name])
+      end
+
+      def each_falcon_medias
+        self.class.falcon_encoding_definitions.each do |name, definition|
+          yield(name, falcon_media_for(name))
         end
-      end
-      
-      def falcon_path(profile)
-        profile = profile.is_a?(Falcon::Profile) ? profile : Falcon::Profile.find(profile.to_s)
-        profile.path(falcon_source_path, self.class.falcon_name)
-      end
-      
-      def falcon_url(profile)
-        falcon_path(profile).relative_path_from( Rails.root.join('public') )
       end
       
       protected
       
-        def create_falcon_encodings
-          self.class.falcon_profiles.each do |profile_name|
-            self.falcon_encodings.create(
-              :name => self.class.falcon_name, 
-              :profile_name => profile_name, 
-              :source_path => falcon_source_path)
+        def save_falcon_medias
+          each_falcon_medias do |name, media|
+            media.send(:save)
+          end
+        end
+        
+        def destroy_falcon_medias
+          each_falcon_medias do |name, media|
+            media.send(:destroy)
           end
         end
     end

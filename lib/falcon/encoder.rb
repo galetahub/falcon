@@ -21,32 +21,13 @@ module Falcon
           
           attr_accessible :name, :profile_name, :source_path
           
-          validates_presence_of :profile_name, :source_path
-
-          define_callbacks :encode, :terminator => "result == false", :scope => [:kind, :name]
+          validates_presence_of :name, :profile_name, :source_path
           
           before_validation :set_resolution
-          after_create :start_encoding
-          before_encode :before_encoding
-          after_encode :after_encoding
           
           scope :with_profile, lambda {|name| where(:profile_name => name).first }
+          scope :with_name, lambda {|name| where(:name => name).first }
         end
-      end
-      
-      def before_encode(*args, &block)
-        options = args.extract_options!
-        if options.is_a?(Hash) && options[:on]
-          options[:if] = Array.wrap(options[:if])
-        end
-        set_callback(:encode, :before, *(args << options), &block)
-      end
-
-      def after_encode(*args, &block)
-        options = args.extract_options!
-        options[:prepend] = true
-        options[:if] = Array.wrap(options[:if])
-        set_callback(:encode, :after, *(args << options), &block)
       end
     end
     
@@ -81,46 +62,19 @@ module Falcon
         })
       end
       
-      # Yield generated screenshots and remove them
-      def screenshots(&block)
-        Dir.glob("#{output_directory}/*.{jpg,JPG}").each do |filepath|
-    	    yield filepath
-    	    FileUtils.rm(filepath, :force => true)
-    	  end
-      end
-      
       # A hash of metadatas for video:
       # 
       # { :title => '', :author => '', :copyright => '', 
       #   :comment => '', :description => '', :language => ''}
       #
       def metadata_options
-        if videoable_method?(:falcon_metadata_options)
-          videoable.falcon_metadata_options
-        else
-          {}
-        end
+        videoable.send(name).metadata
       end
       
       def encode
-        run_callbacks :encode do
-          begun_encoding = Time.now
-
-          self.status = PROCESSING
-          self.save(:validate => false)
-
-          begin
-            self.encode_source
-            self.generate_screenshots
-            
-            self.status = SUCCESS
-            self.encoded_at = Time.now
-            self.encoding_time = (Time.now - begun_encoding).to_i
-            self.save(:validate => false)
-          rescue
-            self.status = FAILURE
-            self.save(:validate => false)
-            raise
+        videoable.run_callbacks(:encode) do
+          videoable.run_callbacks(:"#{name}_encode") do
+            process_encoding
           end
         end
       end
@@ -139,11 +93,24 @@ module Falcon
       
       protected
         
-        def start_encoding
-          if videoable_method?(:falcon_encode)
-            videoable.falcon_encode(self)
-          else
-            encode
+        def process_encoding
+          begun_encoding = Time.now
+
+          self.status = PROCESSING
+          self.save(:validate => false)
+
+          begin
+            self.encode_source
+            self.generate_screenshots
+            
+            self.status = SUCCESS
+            self.encoded_at = Time.now
+            self.encoding_time = (Time.now - begun_encoding).to_i
+            self.save(:validate => false)
+          rescue
+            self.status = FAILURE
+            self.save(:validate => false)
+            raise
           end
         end
         
@@ -247,24 +214,6 @@ module Falcon
             ::WebVideo.logger.error("Unable to generate screenshots for video #{self.id}: #{e.class} - #{e.message}")
             return false
           end
-        end
-        
-        def before_encoding
-          if videoable_method?(:falcon_before_encode)
-            return videoable.falcon_before_encode(self)
-          else
-            return true
-          end
-        end
-        
-        def after_encoding
-          if videoable_method?(:falcon_after_encode)
-            videoable.falcon_after_encode(self)
-          end
-        end
-        
-        def videoable_method?(method_name)
-          videoable && videoable.respond_to?(method_name.to_sym)
         end
     end
   end

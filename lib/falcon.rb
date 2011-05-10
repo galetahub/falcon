@@ -2,6 +2,7 @@ module Falcon
   autoload :Profile, 'falcon/profile'
   autoload :Base,    'falcon/base'
   autoload :Encoder, 'falcon/encoder'
+  autoload :Media,   'falcon/media'
   
   CONTENT_TYPES = [
     'application/x-mp4',
@@ -50,10 +51,6 @@ module Falcon
   
   def self.table_name_prefix
     'falcon_'
-  end
-  
-  def self.redis
-    Falcon::Redis.instance
   end
 end
 
