@@ -123,7 +123,7 @@ For delayed_job:
     ...
     
     def falcon_after_encode(record)
-      record.screenshots.each do |filepath|
+      record.screenshots do |filepath|
         self.screenshots.create(:data => File.new(filepath))
       end
     end

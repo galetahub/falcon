@@ -26,7 +26,7 @@ module Falcon
           define_callbacks :encode, :terminator => "result == false", :scope => [:kind, :name]
           
           before_validation :set_resolution
-          after_create :make_dir, :start_encoding
+          after_create :make_output_dir, :start_encoding
           before_encode :before_encoding
           after_encode :after_encoding
           
@@ -68,6 +68,10 @@ module Falcon
         @output_path ||= self.profile.path(source_path)
       end
       
+      def output_directory
+        @output_directory ||= File.dirname(self.output_path)
+      end
+      
       def profile_options(input_file, output_file)
         self.profile.encode_options.merge({
           :input_file => input_file,
@@ -78,8 +82,8 @@ module Falcon
       end
       
       # Yield generated screenshots and remove them
-      def screenshots
-        Dir.glob("#{File.dirname(self.source_path)}/*.{jpg,JPG}").each do |filepath|
+      def screenshots(&block)
+        Dir.glob("#{output_directory}/*.{jpg,JPG}").each do |filepath|
     	    yield filepath
     	    FileUtils.rm(filepath, :force => true)
     	  end
@@ -100,10 +104,10 @@ module Falcon
       
       def encode
         run_callbacks :encode do
+          begun_encoding = Time.now
+
           self.status = PROCESSING
           self.save(:validate => false)
-
-          begun_encoding = Time.now
 
           begin
             self.encode_source
@@ -259,8 +263,8 @@ module Falcon
           end
         end
         
-        def make_dir
-          FileUtils.mkdir_p( File.dirname(output_path) )
+        def make_output_dir
+          FileUtils.mkdir_p( output_directory )
         end
         
         def videoable_method?(method_name)
