@@ -19,14 +19,14 @@ module Falcon
           
           attr_accessor :ffmpeg_resolution, :ffmpeg_padding
           
-          attr_accessible :profile_name, :source_path
+          attr_accessible :name, :profile_name, :source_path
           
           validates_presence_of :profile_name, :source_path
 
           define_callbacks :encode, :terminator => "result == false", :scope => [:kind, :name]
           
           before_validation :set_resolution
-          after_create :make_output_dir, :start_encoding
+          after_create :start_encoding
           before_encode :before_encoding
           after_encode :after_encoding
           
@@ -65,7 +65,7 @@ module Falcon
       end
       
       def output_path
-        @output_path ||= self.profile.path(source_path)
+        @output_path ||= self.profile.path(source_path, name).to_s
       end
       
       def output_directory
@@ -211,15 +211,15 @@ module Falcon
               command << "-r $fps$"
               command << "-f $container$"
               
-              # Metadata
-              if metadata_options
-                metadata_options.each do |key, value|
-                  command << "-metadata #{key}='#{value}'"
-                end
-              end
-              
               # Profile additional arguments
               command << self.profile.command
+              
+              # Metadata options
+              if metadata_options
+                metadata_options.each do |key, value|
+                  command << "-metadata #{key}=\"#{value}\""
+                end
+              end
               
               command << @ffmpeg_padding
               command << "-y"
@@ -261,10 +261,6 @@ module Falcon
           if videoable_method?(:falcon_after_encode)
             videoable.falcon_after_encode(self)
           end
-        end
-        
-        def make_output_dir
-          FileUtils.mkdir_p( output_directory )
         end
         
         def videoable_method?(method_name)

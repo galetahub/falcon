@@ -16,7 +16,7 @@ module Falcon
       :fps => 29.97, 
       :video_codec => "libx264",
       :video_bitrate => 500, 
-      :command => "-vpre medium",
+      :command => nil,
       :audio_codec => "libfaac",
       :audio_bitrate => 128, 
       :audio_sample_rate => 48000  
@@ -27,6 +27,10 @@ module Falcon
       options = DEFAULTS.merge(options)
       
       @name = name.to_s
+      
+      if self.class.exists?(@name)
+        raise "Profile name: #{@name} already registered."
+      end
       
       options.each do |key, value|
         send("#{key}=", value)
@@ -43,8 +47,12 @@ module Falcon
       self.video_bitrate.to_i * 1024
     end
     
-    def path(source)
-      source.chomp(File.extname(source)) + "." + extname
+    def path(source, prefix = nil)
+      dirname = File.dirname(source)
+      filename = File.basename(source, File.extname(source))
+      filename = [prefix, filename].compact.join('_') + '.' + extname
+      
+      Pathname.new(File.join(dirname, filename))
     end
     
     def encode_options
@@ -60,6 +68,12 @@ module Falcon
       }
     end
     
+    def update(options)
+      options.each do |key, value|
+        send("#{key}=", value)
+      end
+    end
+    
     class << self
       def find(name)
         @@all.detect { |p| p.name == name.to_s } 
@@ -68,6 +82,10 @@ module Falcon
       
       def [](name)
         find(name)
+      end
+      
+      def exists?(name)
+        !find(name).nil?
       end
     end
   end

@@ -1,6 +1,7 @@
 class FalconCreateEncodings < ActiveRecord::Migration
   def self.up
     create_table :falcon_encodings do |t|
+      t.string   :name, :limit => 50, :null => false
       t.string   :profile_name, :limit => 50, :null => false
       t.string   :source_path, :null => false
       

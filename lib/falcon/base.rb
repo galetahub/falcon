@@ -34,6 +34,10 @@ module Falcon
       def falcon_profiles
         falcon_encode_options[:profiles]
       end
+      
+      def falcon_name
+        falcon_encode_options[:name]
+      end
     end
     
     module InstanceMethods
@@ -45,11 +49,23 @@ module Falcon
         end
       end
       
+      def falcon_path(profile)
+        profile = profile.is_a?(Falcon::Profile) ? profile : Falcon::Profile.find(profile.to_s)
+        profile.path(falcon_source_path, self.class.falcon_name)
+      end
+      
+      def falcon_url(profile)
+        falcon_path(profile).relative_path_from( Rails.root.join('public') )
+      end
+      
       protected
       
         def create_falcon_encodings
           self.class.falcon_profiles.each do |profile_name|
-            self.falcon_encodings.create(:profile_name => profile_name, :source_path => falcon_source_path)
+            self.falcon_encodings.create(
+              :name => self.class.falcon_name, 
+              :profile_name => profile_name, 
+              :source_path => falcon_source_path)
           end
         end
     end

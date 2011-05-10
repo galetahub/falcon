@@ -27,6 +27,10 @@ By default avariable two profiles "web_mp4" and "web_ogg":
     :video_bitrate => 500, :fps => 29.97, :audio_codec => "libvorbis",
     :audio_bitrate => 128, :audio_sample_rate => 48000})
 
+=== Update profiles
+
+  Falcon::Profile['web_mp4'].update({:width => 800, :height => 600})
+
 === Model
 
 Model has attachment file, we declare "falcon_encode" method and pass :source and :profiles options:
