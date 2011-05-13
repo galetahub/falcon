@@ -32,6 +32,11 @@ module Falcon
       @normalized_profiles
     end
     
+    # List of generated video files
+    def sources
+      @sources ||= profiles.values.map{|profile| url(profile) }
+    end
+    
     # A hash of metadatas for video:
     # 
     # { :title => '', :author => '', :copyright => '', 
@@ -83,6 +88,7 @@ module Falcon
       # TODO: destroy generated files
     end
     
+    # Check if source file exists
     def exist?
       File.exist?(source_path)
     end
@@ -118,6 +124,7 @@ module Falcon
           :source_path => source_path)
       end
       
+      # Start encoding direcly or send it into method if set
       def start_encoding(encoding)
         if @encode
           @encode.respond_to?(:call) ? @encode.call(encoding) : instance.send(@encode, encoding)

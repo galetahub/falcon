@@ -9,7 +9,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Igor Galeta", "Pavlo Galeta"]
-  s.date = %q{2011-05-10}
+  s.date = %q{2011-05-13}
   s.description = %q{Background video encoding via resque}
   s.email = %q{galeta.igor@gmail.com}
   s.extra_rdoc_files = [
@@ -25,6 +25,7 @@ Gem::Specification.new do |s|
     "lib/falcon/base.rb",
     "lib/falcon/encoder.rb",
     "lib/falcon/engine.rb",
+    "lib/falcon/media.rb",
     "lib/falcon/profile.rb",
     "lib/falcon/profiles.rb",
     "lib/falcon/version.rb",

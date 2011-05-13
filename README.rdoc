@@ -46,7 +46,7 @@ Model has attachment file, we declare "falcon_encode" method and pass :source an
     
     attr_accessible :data
     
-    falcon_encode :source => lambda { |file| file.data.path }, 
+    falcon_encode 'media', :source => lambda { |file| file.data.path }, 
                   :profiles => ['web_mp4', 'web_ogg']
   end
 
