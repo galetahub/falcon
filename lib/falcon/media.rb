@@ -1,3 +1,5 @@
+require 'fileutils'
+
 module Falcon
   class Media
     def self.default_options
@@ -68,29 +70,40 @@ module Falcon
     
     # Returns the path of the generated media file by profile object or profile name
     def path(profile)
-      profile = profile.is_a?(Falcon::Profile) ? profile : Falcon::Profile.find(profile.to_s)
-      profile.path(source_path, name)
+      Falcon::Profile.detect(profile).path(source_path, name)
     end
     
     # Returns the public URL of the media, with a given profile
     def url(profile)
-      path(profile).relative_path_from( Rails.root.join('public') )
+      "/" + path(profile).relative_path_from( Rails.root.join('public') )
     end
     
     def save
-      #flush_deletes
+      flush_deletes
       create_encodings
       @dirty = false
       true
     end
     
+    # Destroy files end encodings
     def destroy
-      # TODO: destroy generated files
+      flush_deletes
+      @dirty = false
+      true
     end
     
     # Check if source file exists
     def exist?
       File.exist?(source_path)
+    end
+    
+    # Check if source encoded by all profiles
+    def all_ready?
+      instance.falcon_encodings.success.count == profiles.keys.size
+    end
+    
+    def ready?(profile)
+      instance.falcon_encodings.with_profile(profile).success.exists?
     end
     
     def assign(source)
@@ -130,6 +143,15 @@ module Falcon
           @encode.respond_to?(:call) ? @encode.call(encoding) : instance.send(@encode, encoding)
         else
           encoding.encode
+        end
+      end
+      
+      # Clear generated files and created encodings
+      def flush_deletes
+        instance.falcon_encodings.delete_all
+        
+        profiles.each do |profile_name, profile|
+          FileUtils.rm(path(profile), :force => true)
         end
       end
   end

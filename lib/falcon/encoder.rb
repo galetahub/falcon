@@ -25,8 +25,11 @@ module Falcon
           
           before_validation :set_resolution
           
-          scope :with_profile, lambda {|name| where(:profile_name => name).first }
-          scope :with_name, lambda {|name| where(:name => name).first }
+          scope :with_profile, lambda {|name| where(:profile_name => Falcon::Profile.detect(name).name) }
+          scope :with_name, lambda {|name| where(:name => name) }
+          scope :processing, where(:status => PROCESSING)
+          scope :success, where(:status => SUCCESS)
+          scope :failure, where(:status => FAILURE)
         end
       end
     end

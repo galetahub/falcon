@@ -87,6 +87,10 @@ module Falcon
       def exists?(name)
         !find(name).nil?
       end
+      
+      def detect(name)
+        name.is_a?(Falcon::Profile) ? name : find(name.to_s)
+      end
     end
   end
 end
