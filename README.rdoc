@@ -143,13 +143,17 @@ For delayed_job:
     end
   end
   
-=== Path
+=== Path and url
   
   class VideoFile
     falcon_encode 'media', :source => lambda { |file| file.data.path }
     
     def media_url(profile_name)
       media.url(profile_name)
+    end
+    
+    def media_path(profile_name)
+      media.path(profile_name)
     end
   end
   
