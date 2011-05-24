@@ -1,5 +1,3 @@
-require 'fileutils'
-
 module Falcon
   class Media
     def self.default_options
@@ -148,10 +146,7 @@ module Falcon
       
       # Clear generated files and created encodings
       def flush_deletes
-        profiles.each do |profile_name, profile|
-          filepath = path(profile)
-          FileUtils.rm(filepath, :force => true) if filepath && File.exists?(filepath)
-        end
+        instance.falcon_encodings.clear
       end
   end
 end

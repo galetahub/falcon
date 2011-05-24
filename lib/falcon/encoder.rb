@@ -95,26 +95,34 @@ module Falcon
         self.status == SUCCESS
       end
       
+      def processing!
+        self.status = PROCESSING
+        save(:validate => false)
+      end
+      
+      def fail!
+        self.status = FAILURE
+        save(:validate => false)
+      end
+      
+      def success!
+        self.status = SUCCESS
+        self.encoded_at = Time.now
+        save(:validate => false)
+      end
+      
       protected
         
         def process_encoding
           begun_encoding = Time.now
 
-          self.status = PROCESSING
-          self.save(:validate => false)
+          processing!
 
-          begin
-            self.encode_source
-            self.generate_screenshots
-            
-            self.status = SUCCESS
-            self.encoded_at = Time.now
+          if encode_source && generate_screenshots
             self.encoding_time = (Time.now - begun_encoding).to_i
-            self.save(:validate => false)
-          rescue
-            self.status = FAILURE
-            self.save(:validate => false)
-            raise
+            success!
+          else
+            fail!
           end
         end
         
