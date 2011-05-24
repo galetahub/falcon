@@ -1,3 +1,5 @@
+require 'fileutils'
+
 module Falcon
   class Media
     def self.default_options
