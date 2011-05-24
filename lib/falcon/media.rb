@@ -148,10 +148,9 @@ module Falcon
       
       # Clear generated files and created encodings
       def flush_deletes
-        instance.falcon_encodings.delete_all
-        
         profiles.each do |profile_name, profile|
-          FileUtils.rm(path(profile), :force => true)
+          filepath = path(profile)
+          FileUtils.rm(filepath, :force => true) if filepath && File.exists?(filepath)
         end
       end
   end

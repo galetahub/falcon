@@ -30,10 +30,9 @@ module Falcon
         has_many :falcon_encodings, 
           :class_name => 'Falcon::Encoding', 
           :as => :videoable,
-          :dependent => :delete_all
+          :dependent => :destroy
 
         after_save :save_falcon_medias
-        before_destroy :destroy_falcon_medias
         
         define_falcon_callbacks :encode, :"#{name}_encode"
         

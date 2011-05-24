@@ -24,6 +24,7 @@ module Falcon
           validates_presence_of :name, :profile_name, :source_path
           
           before_validation :set_resolution
+          before_destroy :remove_output
           
           scope :with_profile, lambda {|name| where(:profile_name => Falcon::Profile.detect(name).name) }
           scope :with_name, lambda {|name| where(:name => name) }
@@ -217,6 +218,10 @@ module Falcon
             ::WebVideo.logger.error("Unable to generate screenshots for video #{self.id}: #{e.class} - #{e.message}")
             return false
           end
+        end
+        
+        def remove_output
+          FileUtils.rm(output_path, :force => true) if File.exists?(output_path)
         end
     end
   end
