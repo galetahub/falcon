@@ -62,7 +62,6 @@ module Falcon
           :input_file => input_file,
           :output_file => output_file,
           :resolution => self.ffmpeg_resolution
-          #:resolution_and_padding => self.ffmpeg_resolution_and_padding_no_cropping
         })
       end
       
