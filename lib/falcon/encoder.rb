@@ -133,10 +133,10 @@ module Falcon
           end
         end
         
+        # Calculate resolution and any padding
         def ffmpeg_resolution_and_padding_no_cropping(v_width, v_height)
-          # Calculate resolution and any padding
-          in_w = v_width.to_f #self.video.width.to_f
-          in_h = v_height.to_f #self.video.height.to_f
+          in_w = v_width.to_f
+          in_h = v_height.to_f
           out_w = self.width.to_f
           out_h = self.height.to_f
 
@@ -144,35 +144,35 @@ module Falcon
             aspect = in_w / in_h
             aspect_inv = in_h / in_w
           rescue
-            #Merb.logger.error "Couldn't do w/h to caculate aspect. Just using the output resolution now."
-            @ffmpeg_resolution = %(#{self.width}x#{self.height} )
+            Rails.logger.error "Couldn't do w/h to caculate aspect. Just using the output resolution now."
+            @ffmpeg_resolution = "#{self.width}x#{self.height}"
             return 
           end
 
           height = (out_w / aspect.to_f).to_i
           height -= 1 if height % 2 == 1
 
-          @ffmpeg_resolution = %(#{self.width}x#{height} )
+          @ffmpeg_resolution = "#{self.width}x#{height}"
 
           # Keep the video's original width if the height
           if height > out_h
             width = (out_h / aspect_inv.to_f).to_i
             width -= 1 if width % 2 == 1
 
-            @ffmpeg_resolution = %(#{width}x#{self.height} )
+            @ffmpeg_resolution = "#{width}x#{self.height}"
             self.width = width
-            self.save
+            self.save(:validate => false)
           # Otherwise letterbox it
           elsif height < out_h
             pad = ((out_h - height.to_f) / 2.0).to_i
             pad -= 1 if pad % 2 == 1
-            @ffmpeg_padding = %(-padtop #{pad} -padbottom #{pad})
+            @ffmpeg_padding = "-vf pad=#{self.width}:#{height + pad}:0:#{pad / 2}"
           end
         end
         
-        def encode_source  
-          #stream = transcoder.source.video_stream
-          ffmpeg_resolution_and_padding_no_cropping(self.width, self.height)
+        def encode_source
+          stream = transcoder.source.video_stream
+          ffmpeg_resolution_and_padding_no_cropping(stream.width, stream.height)
           options = self.profile_options(self.source_path, output_path)
           
           begin
@@ -200,7 +200,7 @@ module Falcon
                 end
               end
               
-              command << @ffmpeg_padding
+              command << self.ffmpeg_padding
               command << "-y"
             end
           rescue ::WebVideo::CommandLineError => e

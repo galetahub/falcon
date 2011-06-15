@@ -115,7 +115,7 @@ module Falcon
     
     # Yield generated screenshots and remove them
     def screenshots(&block)
-      Dir.glob("#{output_directory}/*.{jpg,JPG}").each do |filepath|
+      Dir.glob(File.join(output_directory, '*.{jpg,JPG}').to_s).each do |filepath|
   	    yield filepath
   	    FileUtils.rm(filepath, :force => true)
   	  end
